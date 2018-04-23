@@ -9,16 +9,47 @@ MongoClient.connect(
     function (err, client) {
         var db = client.db('accounting');
         var collection = db.collection('customers');
-        //Updating a file
-        collection.update({}, { '$set': { 'age': 24 } }, { 'multi': true }, function (err, count) {
-
-            console.log('Updated', count, 'documents');
-
+      
+        var doFind = function (callback) {
             collection.find().toArray(function (err, documents) {
                 console.dir(documents);
-                client.close();
+                callback();
             });
+        };
 
-        });
+        var doInsert = function (i) {
+            if (i < 20) {
+                var value = Math.floor(Math.random() * 10);
+                collection.insert(
+                    { 'n': '#' + i, 'v': value },
+                    function (err, count) {
+                        doInsert(i + 1);
+                    });
+            } else {
+                console.log();
+                console.log('Inserted', i, 'documents:');
+                doFind(function () {
+                    doUpdate();
+                });
+            }
+        };
+
+        var doUpdate = function () {
+            collection.update(
+                { 'v': { '$gt': 5 } },
+                { '$set': { 'valuable': true } },
+                { 'multi': true },
+                function (err, count) {
+                    console.log();
+                    console.log('Updated', count, 'documents:');
+                    doFind(function () {
+                        collection.remove({}, function () {
+                            client.close();
+                        });
+                    });
+                });
+        };
+
+        doInsert(0);
 
     });
